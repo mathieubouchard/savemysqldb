@@ -1,0 +1,18 @@
+Source: savemysqldb
+Section: utils
+Priority: extra
+Maintainer: Mathieu Bouchard <mbouchar@bioinfo.ulaval.ca>
+Build-Depends: debhelper (>= 7), python-all, python-central (>=0.5)
+Standards-Version: 3.7.3
+XS-Python-Standards-Version: 0.4
+XS-Python-Version: >= 2.3
+Homepage: http://rad.bioinfo.ulaval.ca
+
+Package: savemysqldb
+Architecture: all
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, mysql-server
+Provides: ${python:Provides}
+XB-Python-Version: ${python:Versions}
+Description: Create a backup of a mysql database
+ This program will create a copy of the mysql databases
+ using mysqlhotcopy
