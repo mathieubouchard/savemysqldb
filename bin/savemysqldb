@@ -101,10 +101,10 @@ def dumpDatabases(databases, config):
                 command.append("--addtodest")
             command.extend(["%s./%s/" % (database, table), config.BACKUP_DIR])
 
-        process = Popen(command, stdout = PIPE, stderr = PIPE)
-        process.wait()
-        if process.returncode != 0:
-            raise OSError("mysqlhotcopy: %s" % process.communicate()[1])
+            process = Popen(command, stdout = PIPE, stderr = PIPE)
+            process.wait()
+            if process.returncode != 0:
+                raise OSError("mysqlhotcopy: %s" % process.communicate()[1])
 
 if __name__ == "__main__":
     # Get program configuration
