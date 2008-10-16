@@ -6,6 +6,7 @@
 
 from ConfigParser import ConfigParser
 from subprocess import Popen, PIPE
+from datetime import datetime
 import socket, logging, sys, os
 
 CONFIGFILE = "/etc/savemysqldb.conf"
@@ -14,7 +15,8 @@ DEFAULT_CONFIG = {"DB_DIR": "/var/lib/mysql",
                   "MYSQLHOTCOPY_BIN": "/usr/bin/mysqlhotcopy",
                   "DB_USER": "root",
                   "DB_PASSWD": "",
-                  "EXCEPTIONS": []}
+                  "EXCEPTIONS": [],
+                  "LOG_FILENAME": "/var/log/savemysqldb.log"}
 
 class Config(object):
     def __init__(self, config_file):
@@ -110,11 +112,21 @@ if __name__ == "__main__":
     # Get program configuration
     config = Config(CONFIGFILE)
 
+    logging.basicConfig(filename = config.LOG_FILENAME, level = logging.INFO,
+                        format = "%(asctime)s:%(levelname)s:%(name)s:%(message)s",
+                        datefmt = "%Y-%m-%d %H:%M:%S")
+    logging.info("Starting backup")
+
     try:
         # Create the list of databases
         databases = findDatabases(config)
+        logging.info("We will save the following databases: %s" % " ".join(databases))
         # Dump the databases
         dumpDatabases(databases, config)
     except OSError, e:
-        print "%s: %s: %s" % (socket.gethostname(), __file__, str(e))
+        message = "%s: %s: %s" % (socket.gethostname(), __file__, str(e))
+        logging.error(message)
+        print message
         sys.exit(1)
+
+    logging.info("Backup complete")
