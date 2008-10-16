@@ -112,9 +112,12 @@ if __name__ == "__main__":
     # Get program configuration
     config = Config(CONFIGFILE)
 
-    logging.basicConfig(filename = config.LOG_FILENAME, level = logging.INFO,
-                        format = "%(asctime)s:%(levelname)s:%(name)s:%(message)s",
-                        datefmt = "%Y-%m-%d %H:%M:%S")
+    try:
+        logging.basicConfig(filename = config.LOG_FILENAME, level = logging.INFO,
+                            format = "%(asctime)s:%(levelname)s:%(name)s:%(message)s",
+                            datefmt = "%Y-%m-%d %H:%M:%S")
+    except IOError:
+        print "Unable to open log file (%s) in write mode" % config.LOG_FILENAME
     logging.info("Starting backup")
 
     try:
