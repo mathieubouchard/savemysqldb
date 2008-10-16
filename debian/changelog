@@ -1,4 +1,10 @@
-savemysqldb (0.1-1) unstable; urgency=low
+savemysqldb (0.2) unstable; urgency=low
+
+  * Add support for databases with a lot of tables
+
+ -- Mathieu Bouchard <mbouchar@bioinfo.ulaval.ca>  Thu, 16 Oct 2008 10:21:31 -0400
+
+savemysqldb (0.1) unstable; urgency=low
 
   * Initial release
 

@@ -47,7 +47,7 @@ def findDatabases(config):
     """Find the list of databases that needs to be dumped
 
     @param config: Program configuration
-    @type config: SaveMySQLDBConfig
+    @type config: Config
 
     @return: The list of databases
     @rtype: [ str ]
@@ -56,13 +56,30 @@ def findDatabases(config):
             if os.path.isdir(os.path.join(config.DB_DIR, x)) \
                and x not in config.EXCEPTIONS]
 
+def findTables(database, config):
+    """Find the list of tables in a database (mysql database files suffix
+    if .MYD)
+
+    @param database: The name of the database
+    @type database: str
+    @param config: Program configuration
+    @type config: Config
+
+    @return: The list of tables
+    @rtype: [ str ]
+    """
+    return [os.path.splitext(x)[0]
+            for x in os.listdir(os.path.join(config.DB_DIR, database)) \
+            if os.path.isfile(os.path.join(config.DB_DIR, database, x)) \
+               and os.path.splitext(x)[1].upper() == ".MYD"]
+
 def dumpDatabases(databases, config):
     """Create a hot copy of the selected databases using mysqlhotcopy
 
     @param databases: The list of databases to dump
     @type databases: [ str ]
     @param config: Program configuration
-    @type directory: SaveMySQLDBConfig
+    @type directory: Config
     """
     if not os.path.exists(config.BACKUP_DIR):
         os.makedirs(config.BACKUP_DIR)
@@ -70,10 +87,19 @@ def dumpDatabases(databases, config):
         raise OSError("%s is not a directory" % config.BACKUP_DIR)
 
     for database in databases:
-        command = [config.MYSQLHOTCOPY_BIN, "--allowold", "-u", config.DB_USER,
-                   database, config.BACKUP_DIR]
-        if config.DB_PASSWD is not "":
-            command.extend(["-p", config.DB_PASSWD])
+        tables = findTables(database, config)
+        first_table = True
+        for table in tables:
+            # Create the command line
+            command = [config.MYSQLHOTCOPY_BIN, "-u", config.DB_USER]
+            if config.DB_PASSWD != "":
+                command.extend(["-p", config.DB_PASSWD])
+            if first_table:
+                command.append("--allowold")
+                first_table = False
+            else:
+                command.append("--addtodest")
+            command.extend(["%s./%s/" % (database, table), config.BACKUP_DIR])
 
         process = Popen(command, stdout = PIPE, stderr = PIPE)
         process.wait()
