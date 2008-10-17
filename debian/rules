@@ -34,6 +34,8 @@ clean:
 	dh_clean 
 
 install: build $(PYVERS:%=install-ext-%)
+	cp conf/savemysqldb.conf debian/savemysqldb/etc/
+	cp conf/savemysqldb.cron debian/savemysqldb/etc/cron.d/savemysqldb
 
 install-ext-%:
 	dh_testdir
