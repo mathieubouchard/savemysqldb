@@ -1,3 +1,9 @@
+savemysqldb (0.3.1) unstable; urgency=low
+
+  * Rename savemysqldb.cron to savemysqldb
+
+ -- Mathieu Bouchard <mbouchar@bioinfo.ulaval.ca>  Fri, 17 Oct 2008 09:54:45 -0400
+
 savemysqldb (0.3) unstable; urgency=low
 
   * Add logging facilities
