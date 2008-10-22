@@ -11,7 +11,7 @@ import socket, logging, sys, os
 
 CONFIGFILE = "/etc/savemysqldb.conf"
 DEFAULT_CONFIG = {"DB_DIR": "/var/lib/mysql",
-                  "BACKUP_DIR": "/backup",
+                  "BACKUP_DIR": "/var/lib/mysql/backup",
                   "MYSQLHOTCOPY_BIN": "/usr/bin/mysqlhotcopy",
                   "DB_USER": "root",
                   "DB_PASSWD": "",
@@ -19,14 +19,13 @@ DEFAULT_CONFIG = {"DB_DIR": "/var/lib/mysql",
                   "LOG_FILENAME": "/var/log/savemysqldb.log"}
 
 class Config(object):
-    def __init__(self, config_file):
+    def __init__(self):
         """Open a configuration file and load it's contents
 
         @param config_file: The configuration files
         @type config_file: str or [ str ]
         """
         self.__dict__ = DEFAULT_CONFIG
-        self.read(config_file)
 
     def read(self, config_file):
         """Create a dict from the complete file strucure
@@ -35,7 +34,7 @@ class Config(object):
         @rtype: { str : { str : str } }
         """
         config = ConfigParser()
-        config.read(config_file)
+        conf_files = config.read(config_file)
 
         for section in config.sections():
             for option in config.options(section):
@@ -44,6 +43,7 @@ class Config(object):
                     self.__dict__[option] = config.get(section, option).split()
                 else:
                     self.__dict__[option] = config.get(section, option)
+        return conf_files
 
 def findDatabases(config):
     """Find the list of databases that needs to be dumped
@@ -110,7 +110,8 @@ def dumpDatabases(databases, config):
 
 if __name__ == "__main__":
     # Get program configuration
-    config = Config(CONFIGFILE)
+    config = Config()
+    used_configfile = config.read(CONFIGFILE)
 
     try:
         logging.basicConfig(filename = config.LOG_FILENAME, level = logging.INFO,
@@ -119,6 +120,9 @@ if __name__ == "__main__":
     except IOError:
         print "Unable to open log file (%s) in write mode" % config.LOG_FILENAME
     logging.info("Starting backup")
+    logging.info("Using config file: %s" % used_configfile)
+    logging.info("  DB_DIR: %s" % config.DB_DIR)
+    logging.info("  BACKUP_DIR: %s" % config.BACKUP_DIR)
 
     try:
         # Create the list of databases
