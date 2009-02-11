@@ -5,14 +5,17 @@
 # Mathieu Bouchard
 
 from ConfigParser import ConfigParser
+from datetime import datetime
 from subprocess import Popen, PIPE
 from datetime import datetime
 import socket, logging, sys, os
 
 CONFIGFILE = "/etc/savemysqldb.conf"
 DEFAULT_CONFIG = {"DB_DIR": "/var/lib/mysql",
-                  "BACKUP_DIR": "/var/lib/mysql/backup",
+                  "TMP_DIR": "/tmp/backup",
+                  "BACKUP_DIR": "/home/backup/mysql",
                   "MYSQLHOTCOPY_BIN": "/usr/bin/mysqlhotcopy",
+                  "TAR_BIN": "/bin/tar",
                   "DB_USER": "root",
                   "DB_PASSWD": "",
                   "EXCEPTIONS": [],
@@ -83,10 +86,9 @@ def dumpDatabases(databases, config):
     @param config: Program configuration
     @type directory: Config
     """
-    if not os.path.exists(config.BACKUP_DIR):
-        os.makedirs(config.BACKUP_DIR)
-    elif not os.path.isdir(config.BACKUP_DIR):
-        raise OSError("%s is not a directory" % config.BACKUP_DIR)
+    if os.path.exists(config.TMP_DIR):
+        os.system("/bin/rm -rf %s" % config.TMP_DIR)
+    os.makedirs(config.TMP_DIR)
 
     for database in databases:
         tables = findTables(database, config)
@@ -101,12 +103,33 @@ def dumpDatabases(databases, config):
                 first_table = False
             else:
                 command.append("--addtodest")
-            command.extend(["%s./%s/" % (database, table), config.BACKUP_DIR])
+            command.extend(["%s./%s/" % (database, table), config.TMP_DIR])
 
             process = Popen(command, stdout = PIPE, stderr = PIPE)
             process.wait()
             if process.returncode != 0:
                 raise OSError("mysqlhotcopy: %s" % process.communicate()[1])
+
+def compress(databases, config):
+    if not os.path.exists(config.TAR_BIN):
+        raise OSError("%s is not a tar executable" % config.TAR_BIN)
+    elif not os.path.exists(config.BACKUP_DIR):
+        os.makedirs(config.BACKUP_DIR)
+    elif not os.path.isdir(config.BACKUP_DIR):                
+        raise OSError("%s is not a directory" % config.BACKUP_DIR)
+
+    compressed_filename = os.path.join(config.BACKUP_DIR, "mysql-db-backup_%s.tar.bz2" % \
+                                       (datetime.now().strftime("%Y-%m-%d_%H%M%S")))
+    logging.info("Compressing data to %s" % (compressed_filename))
+
+    command = [config.TAR_BIN, "jcf", compressed_filename]
+    command.extend(databases)
+    os.chdir(config.TMP_DIR)
+
+    process = Popen(command, stdout = PIPE, stderr = PIPE)
+    process.wait()
+    if process.returncode != 0:
+        raise OSError("mysqlhotcopy (compress): %s" % process.communicate()[1])
 
 if __name__ == "__main__":
     # Get program configuration
@@ -120,7 +143,10 @@ if __name__ == "__main__":
     except IOError:
         print "Unable to open log file (%s) in write mode" % config.LOG_FILENAME
     logging.info("Starting backup")
-    logging.info("Using config file: %s" % used_configfile)
+    if len(used_configfile) > 0:
+        logging.info("Using config file: %s" % used_configfile)
+    else:
+        logging.info("Using default config")
     logging.info("  DB_DIR: %s" % config.DB_DIR)
     logging.info("  BACKUP_DIR: %s" % config.BACKUP_DIR)
 
@@ -130,10 +156,14 @@ if __name__ == "__main__":
         logging.info("We will save the following databases: %s" % " ".join(databases))
         # Dump the databases
         dumpDatabases(databases, config)
+        logging.info("Backup complete")
+        # Compress and archive the data
+        compress(databases, config)
+        logging.info("Compression complete")
+        # Cleanup
+        os.system("/bin/rm -rf %s" % config.TMP_DIR)
     except OSError, e:
         message = "%s: %s: %s" % (socket.gethostname(), __file__, str(e))
         logging.error(message)
         print message
         sys.exit(1)
-
-    logging.info("Backup complete")
