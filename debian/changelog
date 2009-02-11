@@ -1,3 +1,9 @@
+savemysqldb (0.5) unstable; urgency=low
+
+  * Only backup compressed data
+
+ -- Mathieu Bouchard <mathieu.bouchard@gydle.com>  Wed, 11 Feb 2009 15:51:01 -0500
+
 savemysqldb (0.3.1) unstable; urgency=low
 
   * Rename savemysqldb.cron to savemysqldb
