@@ -1,0 +1,2 @@
+conf/savemysqldb.conf /etc
+conf/savemysqldb.cron /etc/cron.d

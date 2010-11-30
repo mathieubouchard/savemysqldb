@@ -6,18 +6,22 @@
 
 from ConfigParser import ConfigParser
 from datetime import datetime
-from subprocess import Popen, PIPE
-from datetime import datetime
-import socket, logging, sys, os
+import subprocess
+import tempfile
+import logging
+import socket
+import shutil
+import os
 
 CONFIGFILE = "/etc/savemysqldb.conf"
 DEFAULT_CONFIG = {"DB_DIR": "/var/lib/mysql",
-                  "TMP_DIR": "/tmp/backup",
                   "BACKUP_DIR": "/home/backup/mysql",
-                  "MYSQLHOTCOPY_BIN": "/usr/bin/mysqlhotcopy",
+                  "MYSQLDUMP_BIN": "/usr/bin/mysqldump",
                   "TAR_BIN": "/bin/tar",
                   "DB_USER": "root",
                   "DB_PASSWD": "",
+                  "DB_HOST": "",
+                  "DB_PORT": "",
                   "EXCEPTIONS": [],
                   "LOG_FILENAME": "/var/log/savemysqldb.log"}
 
@@ -78,39 +82,32 @@ def findTables(database, config):
             if os.path.isfile(os.path.join(config.DB_DIR, database, x)) \
                and os.path.splitext(x)[1].upper() == ".MYD"]
 
-def dumpDatabases(databases, config):
-    """Create a hot copy of the selected databases using mysqlhotcopy
+def dumpDatabases(databases, config, tmpdir):
+    """Create a dump of the selected databases using mysqldump
 
     @param databases: The list of databases to dump
     @type databases: [ str ]
     @param config: Program configuration
     @type directory: Config
     """
-    if os.path.exists(config.TMP_DIR):
-        os.system("/bin/rm -rf %s" % config.TMP_DIR)
-    os.makedirs(config.TMP_DIR)
-
     for database in databases:
-        tables = findTables(database, config)
-        first_table = True
-        for table in tables:
-            # Create the command line
-            command = [config.MYSQLHOTCOPY_BIN, "-u", config.DB_USER]
-            if config.DB_PASSWD != "":
-                command.extend(["-p", config.DB_PASSWD])
-            if first_table:
-                command.append("--allowold")
-                first_table = False
-            else:
-                command.append("--addtodest")
-            command.extend(["%s./%s/" % (database, table), config.TMP_DIR])
+        command = [config.MYSQLDUMP_BIN, "-u", config.DB_USER]
+        if config.DB_PASSWD != "":
+            command.extend(["-p%s" % config.DB_PASSWD])
+        if config.DB_HOST != "":
+            command.extend(["-h", config.DB_HOST])
+        if config.DB_PORT != "":
+            command.extend(["-P", config.DB_PORT])
+        command.extend([database])
+        output_file = file(os.path.join(tmpdir, "%s.sql" % database), "w")
 
-            process = Popen(command, stdout = PIPE, stderr = PIPE)
-            process.wait()
-            if process.returncode != 0:
-                raise OSError("mysqlhotcopy: %s" % process.communicate()[1])
+        process = subprocess.Popen(command, stdout = output_file, stderr = subprocess.PIPE)
+        process.wait()
+        output_file.close()
+        if process.returncode != 0:
+            raise OSError("mysqldump: %s" % process.communicate()[1])
 
-def compress(databases, config):
+def compress(databases, config, tmpdir):
     if not os.path.exists(config.TAR_BIN):
         raise OSError("%s is not a tar executable" % config.TAR_BIN)
     elif not os.path.exists(config.BACKUP_DIR):
@@ -123,13 +120,13 @@ def compress(databases, config):
     logging.info("Compressing data to %s" % (compressed_filename))
 
     command = [config.TAR_BIN, "jcf", compressed_filename]
-    command.extend(databases)
-    os.chdir(config.TMP_DIR)
+    command.extend(["%s.sql" % x for x in databases])
+    os.chdir(tmpdir)
 
-    process = Popen(command, stdout = PIPE, stderr = PIPE)
+    process = subprocess.Popen(command, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     process.wait()
     if process.returncode != 0:
-        raise OSError("mysqlhotcopy (compress): %s" % process.communicate()[1])
+        raise OSError("mysqldump (compress): %s" % process.communicate()[1])
 
 if __name__ == "__main__":
     # Get program configuration
@@ -141,7 +138,7 @@ if __name__ == "__main__":
                             format = "%(asctime)s:%(levelname)s:%(name)s:%(message)s",
                             datefmt = "%Y-%m-%d %H:%M:%S")
     except IOError:
-        print "Unable to open log file (%s) in write mode" % config.LOG_FILENAME
+        sys.stderr.write("Unable to open log file (%s) in write mode\n" % config.LOG_FILENAME)
     logging.info("Starting backup")
     if len(used_configfile) > 0:
         logging.info("Using config file: %s" % used_configfile)
@@ -155,15 +152,17 @@ if __name__ == "__main__":
         databases = findDatabases(config)
         logging.info("We will save the following databases: %s" % " ".join(databases))
         # Dump the databases
-        dumpDatabases(databases, config)
+        tmpdir = tempfile.mkdtemp()
+        dumpDatabases(databases, config, tmpdir)
         logging.info("Backup complete")
         # Compress and archive the data
-        compress(databases, config)
+        compress(databases, config, tmpdir)
         logging.info("Compression complete")
         # Cleanup
-        os.system("/bin/rm -rf %s" % config.TMP_DIR)
+        shutil.rmtree(tmpdir)
     except OSError, e:
-        message = "%s: %s: %s" % (socket.gethostname(), __file__, str(e))
+        message = u"%s: %s: %s" % (socket.gethostname(), __file__, unicode(e))
         logging.error(message)
-        print message
+        sys.stderr.write(u"%s\n" % message)
         sys.exit(1)
+
