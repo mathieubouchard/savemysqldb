@@ -1,0 +1,7 @@
+build/
+debian/files
+debian/savemysqldb.debhelper.log
+debian/savemysqldb.postinst.debhelper
+debian/savemysqldb.prerm.debhelper
+debian/savemysqldb.substvars
+debian/savemysqldb/
