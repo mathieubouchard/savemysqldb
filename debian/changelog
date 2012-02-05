@@ -1,4 +1,4 @@
-savemysqldb (1.0) unstable; urgency=low
+savemysqldb (1.0.0) unstable; urgency=low
 
   * Update copyright
   * Use mysqldump instead of mysqlhotcopy
