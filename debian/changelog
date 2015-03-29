@@ -1,9 +1,16 @@
-savemysqldb (2.0.0) UNRELEASED; urgency=medium
+savemysqldb (2.0.1) unstable; urgency=medium
+
+  * Add a success message
+  * Fix debian package dependencies
+
+ -- Mathieu Bouchard <mbouchar@gmail.com>  Sat, 28 Mar 2015 23:06:18 -0400
+
+savemysqldb (2.0.0) unstable; urgency=medium
 
   * Allow to backup databases from remote host
   * Update debian packaging
 
- -- Mathieu Bouchard <mbouchar@localhost>  Sat, 28 Mar 2015 22:31:44 -0400
+ -- Mathieu Bouchard <mbouchar@gmail.com>  Sat, 28 Mar 2015 22:31:44 -0400
 
 savemysqldb (1.0.0) unstable; urgency=low
 
