@@ -8,7 +8,7 @@ Homepage: https://github.com/mbouchar/savemysqldb
 
 Package: savemysqldb
 Architecture: all
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, mysql-client
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, mysql-client-5.5 | mysql-client-5.6
 Provides: ${python:Provides}
 Description: Create a backup of a MySQL database
  This program will create a copy of the MySQL databases
