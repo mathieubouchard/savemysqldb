@@ -262,3 +262,5 @@ if __name__ == "__main__":
     except OSError, e:
         logging.error("An exception occured while creating symlink to latest backup:", exc_info = True)
         sys.exit(1)
+
+    logging.info("Done")
