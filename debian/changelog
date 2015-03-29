@@ -1,41 +1,48 @@
-savemysqldb (1.0.0) UNRELEASED; urgency=low
+savemysqldb (2.0.0) UNRELEASED; urgency=medium
+
+  * Allow to backup databases from remote host
+  * Update debian packaging
+
+ -- Mathieu Bouchard <mbouchar@localhost>  Sat, 28 Mar 2015 22:31:44 -0400
+
+savemysqldb (1.0.0) unstable; urgency=low
 
   * Update copyright
   * Use mysqldump instead of mysqlhotcopy
 
  -- Mathieu Bouchard <mbouchar@gmail.com>  Mon, 29 Nov 2010 22:10:01 -0500
 
-savemysqldb (0.5.0) UNRELEASED; urgency=low
+savemysqldb (0.5.0) unstable; urgency=low
 
   * Only backup compressed data
 
  -- Mathieu Bouchard <mbouchar@gmail.com>  Wed, 11 Feb 2009 15:51:01 -0500
 
-savemysqldb (0.3.1) UNRELEASED; urgency=low
+savemysqldb (0.3.1) unstable; urgency=low
 
   * Rename savemysqldb.cron to savemysqldb
 
  -- Mathieu Bouchard <mbouchar@gmail.com>  Fri, 17 Oct 2008 09:54:45 -0400
 
-savemysqldb (0.3.0) UNRELEASED; urgency=low
+savemysqldb (0.3.0) unstable; urgency=low
 
   * Add logging facilities
 
  -- Mathieu Bouchard <mbouchar@gmail.com>  Thu, 16 Oct 2008 11:56:07 -0400
 
-savemysqldb (0.2.1) UNRELEASED; urgency=low
+savemysqldb (0.2.1) unstable; urgency=low
 
   * Fix a bug that only save the last table in a database
 
  -- Mathieu Bouchard <mbouchar@gmail.com>  Thu, 16 Oct 2008 14:35:14 +0000
 
-savemysqldb (0.2.0) UNRELEASED; urgency=low
+savemysqldb (0.2.0) unstable; urgency=low
 
   * Add support for databases with a lot of tables
 
  -- Mathieu Bouchard <mbouchar@gmail.com>  Thu, 16 Oct 2008 10:21:31 -0400
 
-savemysqldb (0.1.0) UNRELEASED; urgency=low
+savemysqldb (0.1.0) unstable; urgency=low
 
   * Initial release
 
