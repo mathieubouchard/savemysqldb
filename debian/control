@@ -2,17 +2,16 @@ Source: savemysqldb
 Section: utils
 Priority: extra
 Maintainer: Mathieu Bouchard <mbouchar@gmail.com>
-Build-Depends: debhelper (>= 5), python-all, python-central (>=0.5)
-Standards-Version: 3.7.3
-XS-Python-Standards-Version: 0.4
-XS-Python-Version: >= 2.3
-Homepage: http://www.mindeval.com
+Build-Depends: debhelper (>= 5), python-all (>= 2.7), python3-all, dh-python, python-setuptools
+Standards-Version: 3.9.5
+Homepage: https://github.com/mbouchar/savemysqldb
 
 Package: savemysqldb
 Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, mysql-client
 Provides: ${python:Provides}
-XB-Python-Version: ${python:Versions}
-Description: Create a backup of a mysql database
- This program will create a copy of the mysql databases
- using mysqldump
+Description: Create a backup of a MySQL database
+ This program will create a copy of the MySQL databases
+ using mysqldump. For InnoDB databases, it makes sure to
+ use a single transaction so the database is not locked while
+ the backup is taking place.

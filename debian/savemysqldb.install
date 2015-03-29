@@ -1,2 +1,3 @@
 conf/savemysqldb.conf /etc
-conf/savemysqldb.cron /etc/cron.d
+conf/cron/savemysqldb /etc/cron.d
+doc/savemysqldb.1 /usr/share/man/man1

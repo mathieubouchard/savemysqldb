@@ -1,20 +1,24 @@
-This package was debianized by Mathieu Bouchard <mbouchar@gmail.com> on
-Wed, 15 Oct 2008 15:45:38 -0400.
+This package was package for Debian by:
 
-It was downloaded from http://www.mindeval.com
+    Mathieu Bouchard <mbouchar@gmail.com> on Wed, 15 Oct 2008 15:45:38 -0400.
 
-Upstream Author(s):
+It was downloaded from <https://github.com/mbouchar/savemysqldb>
+
+Upstream Author:
 
     Mathieu Bouchard <mbouchar@gmail.com>
 
 Copyright:
 
-    <Copyright (C) 2008-2010 Mathieu Bouchard>
+    <Copyright (C) 2008-2015 Mathieu Bouchard>
 
 License:
 
-    Proprietary
+    GPL-3
 
-The Debian packaging is (C) 2008-2010, Mathieu Bouchard <mbouchar@gmail.com> and
-is licensed under the GPL, see `/usr/share/common-licenses/GPL'.
+The Debian packaging is:
 
+    Copyright (C) 2008-2015 Mathieu Bouchard <mbouchar@gmail.com>
+
+and is licensed under the GPL version 3,
+see `/usr/share/common-licenses/GPL-3'.

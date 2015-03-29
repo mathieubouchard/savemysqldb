@@ -91,7 +91,8 @@ def dumpDatabases(databases, config, tmpdir):
     @type directory: Config
     """
     for database in databases:
-        command = [config.MYSQLDUMP_BIN, "-u", config.DB_USER]
+        # @todo: check if database is InnoDB first
+        command = [config.MYSQLDUMP_BIN, "-u", config.DB_USER, "--single-transaction"]
         if config.DB_PASSWD != "":
             command.extend(["-p%s" % config.DB_PASSWD])
         if config.DB_HOST != "":

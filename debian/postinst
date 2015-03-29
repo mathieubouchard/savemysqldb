@@ -1,6 +1,11 @@
 #!/bin/sh
 
+set -e
+
+# @todo: use syslog
 if [ ! -e "/var/log/savemysqldb.log" ]; then
     touch /var/log/savemysqldb.log
     chown mysql:mysql /var/log/savemysqldb.log
 fi
+
+#DEBHELPER#
