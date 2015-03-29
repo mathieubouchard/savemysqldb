@@ -11,19 +11,22 @@ import tempfile
 import logging
 import socket
 import shutil
+import sys
 import os
 
 CONFIGFILE = "/etc/savemysqldb.conf"
-DEFAULT_CONFIG = {"DB_DIR": "/var/lib/mysql",
-                  "BACKUP_DIR": "/home/backup/mysql",
-                  "MYSQLDUMP_BIN": "/usr/bin/mysqldump",
-                  "TAR_BIN": "/bin/tar",
-                  "DB_USER": "root",
-                  "DB_PASSWD": "",
-                  "DB_HOST": "",
-                  "DB_PORT": "",
-                  "EXCEPTIONS": [],
-                  "LOG_FILENAME": "/var/log/savemysqldb.log"}
+DEFAULT_CONFIG = {
+    "BACKUP_DIR": ".",
+    "MYSQL_BIN": None,
+    "MYSQLDUMP_BIN": None,
+    "TAR_BIN": None,
+    "DB_USER": None,
+    "DB_PASSWD": None,
+    "DB_HOST": None,
+    "DB_PORT": None,
+    "IGNORE": [],
+    "LOG_FILENAME": None
+}
 
 class Config(object):
     def __init__(self):
@@ -34,8 +37,18 @@ class Config(object):
         """
         self.__dict__ = DEFAULT_CONFIG
 
+    def __sanitize_(self):
+        """Try to automatically find correct values for missing config entries"""
+
+        if self.MYSQL_BIN is None:
+            self.MYSQL_BIN = findExecutable("mysql")
+        if self.MYSQLDUMP_BIN is None:
+            self.MYSQLDUMP_BIN = findExecutable("mysqldump")
+        if self.TAR_BIN is None:
+            self.TAR_BIN = findExecutable("tar")
+
     def read(self, config_file):
-        """Create a dict from the complete file strucure
+        """Read the configuration from a file and override the default config
 
         @return: The dict read from the config file
         @rtype: { str : { str : str } }
@@ -46,28 +59,84 @@ class Config(object):
         for section in config.sections():
             for option in config.options(section):
                 option = option.upper()
-                if option == "EXCEPTIONS":
+                if option == "IGNORE":
                     self.__dict__[option] = config.get(section, option).split()
                 else:
                     self.__dict__[option] = config.get(section, option)
+
+        self.__sanitize_()
         return conf_files
 
+def findExecutable(executable):
+    """Find an executable in the PATH
+
+    @param executable: The name of the executable
+    @type executable: str
+
+    @return: The path of the executable file
+    @rtype: str
+    """
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    for path in os.environ["PATH"].split(os.path.pathsep):
+        candidate = os.path.join(path, executable)
+        if is_exe(candidate):
+            return candidate
+
+    raise OSError("Unable to find executable '%s', make sure it is in the PATH" % executable)
+
+class MySQLCommand:
+    def __init__(self, config):
+        """Initialize a MySQL command class with a default configuration
+
+        @param config: The configuration (username, password, etc.)
+        @type executable: Config
+        """
+        self.__config_ = config
+
+    def execute(self, params):
+        """Execute a SQL command with a mysqlclient syntax
+
+        @param params: The SQL command with optional mysql client options
+        @type executable: [str]
+
+        @return: The result of the command
+        @rtype: [str]
+        """
+        command = [self.__config_.MYSQL_BIN]
+        if self.__config_.DB_USER is not None:
+            command.extend(["-u", self.__config_.DB_USER])
+        if self.__config_.DB_PASSWD is not None:
+            command.extend(["-p%s" % self.__config_.DB_PASSWD])
+        if self.__config_.DB_HOST is not None:
+            command.extend(["-h", self.__config_.DB_HOST])
+        if self.__config_.DB_PORT is not None:
+            command.extend(["-P", self.__config_.DB_PORT])
+        command.extend(params)
+
+        process = subprocess.Popen(command, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+        process.wait()
+        if process.returncode != 0:
+            raise OSError("mysql: %s" % process.communicate()[1])
+
+        return process.stdout.read().strip().split()
+
 def findDatabases(config):
-    """Find the list of databases that needs to be dumped
+    """Find the list of MySQL databases
 
     @param config: Program configuration
     @type config: Config
 
-    @return: The list of databases
+    @return: List of MySQL databases
     @rtype: [ str ]
     """
-    return [x for x in os.listdir(config.DB_DIR) \
-            if os.path.isdir(os.path.join(config.DB_DIR, x)) \
-               and x not in config.EXCEPTIONS]
+    mysql = MySQLCommand(config)
+    return mysql.execute(["-s", "-N", "information_schema", "-e",
+                          "SELECT DISTINCT(table_schema) FROM information_schema.tables"])
 
 def findTables(database, config):
-    """Find the list of tables in a database (mysql database files suffix
-    if .MYD)
+    """Find the list of tables in a database
 
     @param database: The name of the database
     @type database: str
@@ -77,10 +146,9 @@ def findTables(database, config):
     @return: The list of tables
     @rtype: [ str ]
     """
-    return [os.path.splitext(x)[0]
-            for x in os.listdir(os.path.join(config.DB_DIR, database)) \
-            if os.path.isfile(os.path.join(config.DB_DIR, database, x)) \
-               and os.path.splitext(x)[1].upper() == ".MYD"]
+    mysql = MySQLCommand(config)
+    return mysql.execute(["-s", "-N", "information_schema", "-e",
+                          "SELECT table_name FROM information_schema.tables WHERE table_schema='%s'" % table_schema])
 
 def dumpDatabases(databases, config, tmpdir):
     """Create a dump of the selected databases using mysqldump
@@ -91,13 +159,14 @@ def dumpDatabases(databases, config, tmpdir):
     @type directory: Config
     """
     for database in databases:
-        # @todo: check if database is InnoDB first
-        command = [config.MYSQLDUMP_BIN, "-u", config.DB_USER, "--single-transaction"]
-        if config.DB_PASSWD != "":
+        command = [config.MYSQLDUMP_BIN, "--single-transaction"]
+        if config.DB_USER is not None:
+            command.extend(["-u", config.DB_USER])
+        if config.DB_PASSWD is not None:
             command.extend(["-p%s" % config.DB_PASSWD])
-        if config.DB_HOST != "":
+        if config.DB_HOST is not None:
             command.extend(["-h", config.DB_HOST])
-        if config.DB_PORT != "":
+        if config.DB_PORT is not None:
             command.extend(["-P", config.DB_PORT])
         command.extend([database])
         output_file = file(os.path.join(tmpdir, "%s.sql" % database), "w")
@@ -118,16 +187,15 @@ def compress(databases, config, tmpdir):
 
     compressed_filename = os.path.join(config.BACKUP_DIR, "mysql-db-backup_%s.tar.bz2" % \
                                        (datetime.now().strftime("%Y-%m-%d_%H%M%S")))
-    logging.info("Compressing data to %s" % (compressed_filename))
+    logging.info("Compressing data to '%s'" % (compressed_filename))
 
-    command = [config.TAR_BIN, "jcf", compressed_filename]
+    command = [config.TAR_BIN, "-jc", "-C", tmpdir, "-f", os.path.abspath(compressed_filename)]
     command.extend(["%s.sql" % x for x in databases])
-    os.chdir(tmpdir)
 
     process = subprocess.Popen(command, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     process.wait()
     if process.returncode != 0:
-        raise OSError("mysqldump (compress): %s" % process.communicate()[1])
+        raise OSError("Compression failed: %s" % process.communicate()[1])
 
     return compressed_filename
 
@@ -136,41 +204,61 @@ if __name__ == "__main__":
     config = Config()
     used_configfile = config.read(CONFIGFILE)
 
+    logging_config = {
+        "level": logging.INFO,
+        "format": "%(asctime)s:%(levelname)s:%(name)s:%(message)s",
+        "datefmt": "%Y-%m-%d %H:%M:%S"
+    }
+
+    if config.LOG_FILENAME is not None:
+        logging_config["filename"] = config.LOG_FILENAME
     try:
-        logging.basicConfig(filename = config.LOG_FILENAME, level = logging.INFO,
-                            format = "%(asctime)s:%(levelname)s:%(name)s:%(message)s",
-                            datefmt = "%Y-%m-%d %H:%M:%S")
+        logging.basicConfig(**logging_config)
     except IOError:
         sys.stderr.write("Unable to open log file (%s) in write mode\n" % config.LOG_FILENAME)
     logging.info("Starting backup")
     if len(used_configfile) > 0:
-        logging.info("Using config file: %s" % used_configfile)
+        logging.info("Using config file '%s':" % used_configfile)
     else:
-        logging.info("Using default config")
-    logging.info("  DB_DIR: %s" % config.DB_DIR)
+        logging.info("Using default config:")
+    logging.info("  DB_HOST: %s" % config.DB_HOST)
+    logging.info("  DB_PORT: %s" % config.DB_PORT)
+    logging.info("  DB_USER: %s" % config.DB_USER)
+    logging.info("  IGNORE: %s" % config.IGNORE)
     logging.info("  BACKUP_DIR: %s" % config.BACKUP_DIR)
+    logging.info("  MYSQL_BIN: %s" % config.MYSQL_BIN)
+    logging.info("  MYSQLDUMP_BIN: %s" % config.MYSQLDUMP_BIN)
 
+    tmpdir = None
+    try:
+        tmpdir = tempfile.mkdtemp()
+    except OSError, e:
+        logging.error("Unable to create temporary directory", exc_info = True)
+        sys.exit(1)
+
+    compressed_filename = None
     try:
         # Create the list of databases
         databases = findDatabases(config)
         logging.info("We will save the following databases: %s" % " ".join(databases))
         # Dump the databases
-        tmpdir = tempfile.mkdtemp()
         dumpDatabases(databases, config, tmpdir)
-        logging.info("Backup complete")
+        logging.info("Backup complete to temporary directory: '%s'" % tmpdir)
         # Compress and archive the data
         compressed_filename = compress(databases, config, tmpdir)
-        logging.info("Compression complete")
+    except OSError, e:
+        logging.error("An exception occured:", exc_info = True)
+        sys.exit(1)
+    finally:
         # Cleanup
         shutil.rmtree(tmpdir)
+
+    try:
         # Create the latest link
         latest_link = os.path.join(config.BACKUP_DIR, "mysql-db-backup-latest.tar.bz2")
         if os.path.exists(latest_link):
             os.unlink(latest_link)
         os.symlink(os.path.basename(compressed_filename), latest_link)
     except OSError, e:
-        message = u"%s: %s: %s" % (socket.gethostname(), __file__, unicode(e))
-        logging.error(message)
-        sys.stderr.write(u"%s\n" % message)
+        logging.error("An exception occured while creating symlink to latest backup:", exc_info = True)
         sys.exit(1)
-
